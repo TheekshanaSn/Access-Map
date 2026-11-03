@@ -3,7 +3,10 @@
   "version": 1,
   "cli": {
     "packageManager": "npm",
-    "analytics": "0afecc59-bd07-456b-88aa-0c57bd9a6bec"
+    "cache": {
+      "enabled": false
+    },
+    "analytics": "651f14df-396c-4bf1-860d-e724fc48e9b5"
   },
   "newProjectRoot": "projects",
   "projects": {
@@ -26,7 +29,11 @@
               }
             ],
             "styles": [
+              "node_modules/leaflet/dist/leaflet.css",
               "src/styles.css"
+            ],
+            "allowedCommonJsDependencies": [
+              "leaflet"
             ]
           },
           "configurations": {
@@ -40,8 +47,8 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
-                  "maximumError": "1MB"
+                  "maximumWarning": "1MB",
+                  "maximumError": "2MB"
                 },
                 {
                   "type": "anyComponentStyle",
