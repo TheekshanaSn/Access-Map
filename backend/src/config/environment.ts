@@ -10,5 +10,7 @@ export const config = {
   clientOrigin: process.env.CLIENT_ORIGIN || 'http://localhost:4200',
   mongoUri: process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/accessmap',
   isProduction: process.env.NODE_ENV === 'production',
+  jwtSecret: process.env.JWT_SECRET || 'accessmap_development_super_secret_jwt_key_2026_change_in_production',
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
+  cookieName: 'access_token',
 };
-

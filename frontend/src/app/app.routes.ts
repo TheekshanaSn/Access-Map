@@ -7,6 +7,7 @@ import { SubmitReportComponent } from './features/submit-report/submit-report.co
 import { AboutComponent } from './features/about/about.component';
 import { AuthComponent } from './features/auth/auth.component';
 import { AdminComponent } from './features/admin/admin.component';
+import { adminGuard } from './core/guards/admin.guard';
 
 export const routes: Routes = [
   {
@@ -52,6 +53,7 @@ export const routes: Routes = [
   {
     path: 'admin',
     component: AdminComponent,
+    canActivate: [adminGuard],
     title: 'Moderation Dashboard — AccessMap',
   },
   {

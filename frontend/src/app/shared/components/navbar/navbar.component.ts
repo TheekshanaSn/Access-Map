@@ -1,6 +1,7 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-navbar',
@@ -70,30 +71,57 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
             >
               About
             </a>
-            <a
-              routerLink="/admin"
-              routerLinkActive="bg-teal-50 text-teal-800 font-bold border-teal-200"
-              class="px-3.5 py-2.5 rounded-lg text-sm font-semibold text-slate-700 hover:text-teal-800 hover:bg-slate-50 transition-colors border border-transparent"
-            >
-              Admin
-            </a>
+
+            <!-- Protected Admin Link for Moderator or Admin -->
+            @if (authService.isModerator()) {
+              <a
+                routerLink="/admin"
+                routerLinkActive="bg-slate-900 text-teal-300 font-bold"
+                class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 transition-colors border border-slate-300 flex items-center gap-1.5 ml-1"
+              >
+                <span>🛡️ Moderation</span>
+              </a>
+            }
           </nav>
 
           <!-- Desktop Actions -->
           <div class="hidden sm:flex items-center gap-3">
-            <a
-              routerLink="/login"
-              class="min-h-[44px] px-4 py-2 text-sm font-semibold text-slate-700 hover:text-teal-800 hover:bg-slate-100 rounded-lg transition-colors flex items-center justify-center border border-slate-200"
-            >
-              Sign In
-            </a>
-            <a
-              routerLink="/submit-report"
-              class="min-h-[44px] px-5 py-2.5 text-sm font-bold text-white bg-teal-700 hover:bg-teal-800 active:bg-teal-900 rounded-lg transition-colors shadow-xs flex items-center justify-center gap-2 focus:ring-2 focus:ring-teal-600 focus:ring-offset-2"
-            >
-              <span aria-hidden="true">➕</span>
-              <span>Add Audit</span>
-            </a>
+            @if (authService.currentUser(); as user) {
+              <!-- User Profile & Sign Out Button -->
+              <div class="flex items-center gap-2.5 pl-2">
+                <div class="text-right">
+                  <span class="block text-xs font-black text-slate-900 leading-tight">
+                    {{ user.name }}
+                  </span>
+                  <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-teal-100 text-teal-800">
+                    {{ user.role }}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  (click)="onLogout()"
+                  class="min-h-[40px] px-3 py-1.5 text-xs font-bold text-slate-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+                  title="Sign out of your account"
+                >
+                  Sign Out
+                </button>
+              </div>
+            } @else {
+              <!-- Sign In & Register Buttons -->
+              <a
+                routerLink="/login"
+                class="min-h-[44px] px-4 py-2 text-sm font-semibold text-slate-700 hover:text-teal-800 hover:bg-slate-100 rounded-lg transition-colors flex items-center justify-center border border-slate-200"
+              >
+                Sign In
+              </a>
+              <a
+                routerLink="/submit-report"
+                class="min-h-[44px] px-5 py-2.5 text-sm font-bold text-white bg-teal-700 hover:bg-teal-800 active:bg-teal-900 rounded-lg transition-colors shadow-xs flex items-center justify-center gap-2 focus:ring-2 focus:ring-teal-600 focus:ring-offset-2"
+              >
+                <span aria-hidden="true">➕</span>
+                <span>Add Audit</span>
+              </a>
+            }
           </div>
 
           <!-- Mobile Hamburger Menu Button -->
@@ -161,7 +189,7 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
             routerLinkActive="bg-teal-50 text-teal-800 font-bold"
             class="block px-4 py-3 rounded-lg text-base font-medium text-slate-800 hover:bg-slate-50 min-h-[48px] flex items-center"
           >
-            Submit Accessibility Report
+            Submit Report
           </a>
           <a
             routerLink="/about"
@@ -169,40 +197,63 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
             routerLinkActive="bg-teal-50 text-teal-800 font-bold"
             class="block px-4 py-3 rounded-lg text-base font-medium text-slate-800 hover:bg-slate-50 min-h-[48px] flex items-center"
           >
-            About AccessMap
-          </a>
-          <a
-            routerLink="/admin"
-            (click)="closeMobileMenu()"
-            routerLinkActive="bg-teal-50 text-teal-800 font-bold"
-            class="block px-4 py-3 rounded-lg text-base font-medium text-slate-800 hover:bg-slate-50 min-h-[48px] flex items-center"
-          >
-            Admin Moderation
+            About
           </a>
 
-          <div class="pt-4 mt-2 border-t border-slate-200 flex flex-col gap-2.5">
+          @if (authService.isModerator()) {
             <a
-              routerLink="/login"
+              routerLink="/admin"
               (click)="closeMobileMenu()"
-              class="w-full min-h-[48px] px-4 py-3 rounded-lg text-base font-semibold text-slate-800 bg-slate-100 hover:bg-slate-200 text-center flex items-center justify-center"
+              routerLinkActive="bg-slate-900 text-teal-300 font-bold"
+              class="block px-4 py-3 rounded-lg text-base font-medium text-slate-900 bg-teal-50 min-h-[48px] flex items-center"
             >
-              Sign In or Register
+              🛡️ Admin Moderation
             </a>
-            <a
-              routerLink="/submit-report"
-              (click)="closeMobileMenu()"
-              class="w-full min-h-[48px] px-4 py-3 rounded-lg text-base font-bold text-white bg-teal-700 hover:bg-teal-800 text-center flex items-center justify-center gap-2"
-            >
-              <span>Submit Accessibility Report</span>
-            </a>
+          }
+
+          <div class="pt-3 border-t border-slate-100 flex flex-col gap-2">
+            @if (authService.currentUser(); as user) {
+              <div class="px-4 py-2 bg-slate-50 rounded-lg flex items-center justify-between">
+                <div>
+                  <span class="block text-xs font-bold text-slate-900">{{ user.name }}</span>
+                  <span class="text-[10px] text-slate-500 uppercase">{{ user.role }}</span>
+                </div>
+                <button
+                  type="button"
+                  (click)="onLogout(); closeMobileMenu()"
+                  class="px-3 py-1.5 rounded text-xs font-bold text-rose-700 bg-white border border-rose-200"
+                >
+                  Sign Out
+                </button>
+              </div>
+            } @else {
+              <a
+                routerLink="/login"
+                (click)="closeMobileMenu()"
+                class="w-full min-h-[48px] px-4 py-3 text-center rounded-lg text-sm font-semibold text-slate-800 bg-slate-100 flex items-center justify-center"
+              >
+                Sign In
+              </a>
+              <a
+                routerLink="/register"
+                (click)="closeMobileMenu()"
+                class="w-full min-h-[48px] px-4 py-3 text-center rounded-lg text-sm font-bold text-white bg-teal-700 flex items-center justify-center"
+              >
+                Create Account
+              </a>
+            }
           </div>
         </nav>
       }
+
     </header>
   `,
 })
 export class NavbarComponent {
-  readonly mobileMenuOpen = signal<boolean>(false);
+  readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+
+  mobileMenuOpen = signal<boolean>(false);
 
   toggleMobileMenu(): void {
     this.mobileMenuOpen.update((open) => !open);
@@ -211,5 +262,10 @@ export class NavbarComponent {
   closeMobileMenu(): void {
     this.mobileMenuOpen.set(false);
   }
-}
 
+  onLogout(): void {
+    this.authService.logout().subscribe(() => {
+      this.router.navigate(['/']);
+    });
+  }
+}
