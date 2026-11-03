@@ -1,5 +1,6 @@
 import express, { Application } from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import { config } from './config/environment';
 import apiRoutes from './routes';
 import { notFoundHandler, globalErrorHandler } from './middleware/errorHandler';
@@ -16,6 +17,7 @@ export const createApp = (): Application => {
       allowedHeaders: ['Content-Type', 'Authorization'],
     })
   );
+  app.use(cookieParser());
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
@@ -38,4 +40,3 @@ export const createApp = (): Application => {
 
   return app;
 };
-
