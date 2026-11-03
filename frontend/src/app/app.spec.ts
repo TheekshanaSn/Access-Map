@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
 import { App } from './app';
 
 describe('App', () => {
@@ -8,6 +9,7 @@ describe('App', () => {
     await TestBed.configureTestingModule({
       imports: [App],
       providers: [
+        provideRouter([]),
         provideHttpClient(),
         provideHttpClientTesting(),
       ],
@@ -20,10 +22,11 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('should render AccessMap brand in header', async () => {
+  it('should render AccessMap brand and skip link', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('AccessMap');
+    expect(compiled.textContent).toContain('AccessMap');
+    expect(compiled.querySelector('a[href="#main-content"]')).toBeTruthy();
   });
 });
