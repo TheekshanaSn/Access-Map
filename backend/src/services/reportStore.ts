@@ -1,11 +1,18 @@
 import mongoose from 'mongoose';
-import { AccessibilityReport, IReportDocument, ReportModerationStatus } from '../models/report.model';
+import {
+  AccessibilityReport,
+  IReportDocument,
+  ReportModerationStatus,
+  IProposedPlaceDetails,
+} from '../models/report.model';
 import { isDatabaseConnected } from '../config/database';
 
 export interface ReportRecord {
   id: string;
   placeId: string;
   placeName: string;
+  isProposedPlace?: boolean;
+  proposedPlaceDetails?: IProposedPlaceDetails;
   submittedBy: {
     userId?: string;
     name: string;
@@ -16,7 +23,10 @@ export interface ReportRecord {
   liftStatus: string;
   accessibleToiletStatus: string;
   entranceInformation: string;
+  parkingStatus: string;
   surfaceCondition: string;
+  doorWidthCm?: number;
+  stepCount?: number;
   temporaryObstacle: boolean;
   temporaryObstacleDetails?: string;
   notes?: string;
@@ -25,6 +35,9 @@ export interface ReportRecord {
   reviewedBy?: string;
   reviewedAt?: Date;
   reviewNotes?: string;
+  isCorrection?: boolean;
+  originalReportId?: string;
+  correctionNotes?: string;
   createdAt: Date;
   updatedAt: Date;
   save(): Promise<void>;
@@ -38,13 +51,14 @@ export const defaultReportCreate = AccessibilityReport.create;
 
 const inMemoryReports: ReportRecord[] = [];
 
-// Seed sample audits for instant local testing without DB
-const defaultReports = [
+// Seed realistic sample audits for demonstration and offline testing
+const defaultReports: Partial<ReportRecord>[] = [
   {
     placeId: 'place-1',
-    placeName: 'City General Hospital',
+    placeName: 'National Hospital of Sri Lanka',
     submittedBy: {
-      name: 'Sarah Wheelchair User',
+      userId: 'dev-user-1',
+      name: 'Sarah Perera',
       role: 'wheelchair_user',
     },
     rampStatus: 'available',
@@ -52,19 +66,23 @@ const defaultReports = [
     liftStatus: 'available',
     accessibleToiletStatus: 'available',
     entranceInformation: 'wide_automated_sliding',
+    parkingStatus: 'accessible_bays',
     surfaceCondition: 'smooth_tile',
     temporaryObstacle: false,
-    notes: 'Main entrance ramp is 1:12 gradient with bilateral handrails. Excellent accessibility.',
+    doorWidthCm: 95,
+    notes: 'Main OPD entrance ramp is 1:12 gradient with dual-height handrails. Ground floor accessible restroom is clean and unlocked.',
+    evidenceImageReferences: ['/uploads/reports/sample-hospital-ramp.webp'],
     reportStatus: 'approved' as ReportModerationStatus,
     reviewedBy: 'dev-user-2',
-    reviewedAt: new Date(Date.now() - 86400000 * 2),
-    reviewNotes: 'Verified against on-site measurements.',
+    reviewedAt: new Date(Date.now() - 86400000 * 3),
+    reviewNotes: 'Verified against ministry standard measurements.',
   },
   {
     placeId: 'place-2',
-    placeName: 'Central Public Library',
+    placeName: 'Colombo Public Library',
     submittedBy: {
-      name: 'Jordan Powerchair User',
+      userId: 'dev-user-1',
+      name: 'Jordan Silva',
       role: 'power_chair_user',
     },
     rampStatus: 'available',
@@ -72,27 +90,32 @@ const defaultReports = [
     liftStatus: 'broken_down',
     accessibleToiletStatus: 'available',
     entranceInformation: 'push_button_automated',
+    parkingStatus: 'drop_off_only',
     surfaceCondition: 'paved_stone',
     temporaryObstacle: true,
-    temporaryObstacleDetails: 'West elevator under hydraulic valve maintenance until Friday.',
-    notes: 'Ramps are wide, but west wing lift is currently out of service.',
+    temporaryObstacleDetails: 'West wing lift hydraulic maintenance until Thursday afternoon.',
+    notes: 'Ramps to ground floor reading hall are wide, but elevator to reference section is out of service.',
+    evidenceImageReferences: [],
     reportStatus: 'pending' as ReportModerationStatus,
   },
   {
     placeId: 'place-3',
-    placeName: 'Grand Central Station',
+    placeName: 'Fort Railway Station',
     submittedBy: {
-      name: 'Elena Walker User',
+      userId: 'dev-user-3',
+      name: 'Elena Fernando',
       role: 'walker_user',
     },
     rampStatus: 'available',
     stairsStatus: 'avoidable',
     liftStatus: 'available',
     accessibleToiletStatus: 'available',
-    entranceInformation: 'revolving_with_side_accessible_door',
-    surfaceCondition: 'polished_granite',
+    entranceInformation: 'wide_doors',
+    parkingStatus: 'accessible_bays',
+    surfaceCondition: 'smooth_tile',
     temporaryObstacle: false,
-    notes: 'Step-free tactile pathways lead to all train platforms and accessible ticket counters.',
+    notes: 'Step-free tactile ground paving connects ticket counter 4 directly to platforms 1 through 3.',
+    evidenceImageReferences: [],
     reportStatus: 'approved' as ReportModerationStatus,
   },
 ];
@@ -105,7 +128,6 @@ export const ensureReportsSeeded = (): void => {
     createReportRecord({
       id: `dev-report-${inMemoryReports.length + 1}`,
       ...r,
-      evidenceImageReferences: [],
     });
   }
 };
@@ -114,7 +136,36 @@ ensureReportsSeeded();
 
 function createReportRecord(data: any): ReportRecord {
   const record: ReportRecord = {
-    ...data,
+    id: data.id || `rep-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    placeId: data.placeId,
+    placeName: data.placeName,
+    isProposedPlace: !!data.isProposedPlace,
+    proposedPlaceDetails: data.proposedPlaceDetails,
+    submittedBy: {
+      userId: data.submittedBy?.userId,
+      name: data.submittedBy?.name || 'Community Auditor',
+      role: data.submittedBy?.role || 'community_auditor',
+    },
+    rampStatus: data.rampStatus || 'not_specified',
+    stairsStatus: data.stairsStatus || 'not_specified',
+    liftStatus: data.liftStatus || 'not_specified',
+    accessibleToiletStatus: data.accessibleToiletStatus || 'not_specified',
+    entranceInformation: data.entranceInformation || 'not_specified',
+    parkingStatus: data.parkingStatus || 'not_specified',
+    surfaceCondition: data.surfaceCondition || 'not_specified',
+    doorWidthCm: data.doorWidthCm,
+    stepCount: data.stepCount,
+    temporaryObstacle: !!data.temporaryObstacle,
+    temporaryObstacleDetails: data.temporaryObstacleDetails || '',
+    notes: data.notes || '',
+    evidenceImageReferences: Array.isArray(data.evidenceImageReferences) ? data.evidenceImageReferences : [],
+    reportStatus: data.reportStatus || 'pending',
+    reviewedBy: data.reviewedBy,
+    reviewedAt: data.reviewedAt,
+    reviewNotes: data.reviewNotes || '',
+    isCorrection: !!data.isCorrection,
+    originalReportId: data.originalReportId,
+    correctionNotes: data.correctionNotes || '',
     createdAt: data.createdAt || new Date(),
     updatedAt: data.updatedAt || new Date(),
     async save() {
@@ -125,13 +176,23 @@ function createReportRecord(data: any): ReportRecord {
         id: this.id,
         placeId: this.placeId,
         placeName: this.placeName,
-        submittedBy: this.submittedBy,
+        isProposedPlace: this.isProposedPlace,
+        proposedPlaceDetails: this.proposedPlaceDetails,
+        submittedBy: {
+          name: this.submittedBy.name,
+          role: this.submittedBy.role,
+          // Only show userId if explicitly accessed internally, hide email/phone
+          userId: this.submittedBy.userId,
+        },
         rampStatus: this.rampStatus,
         stairsStatus: this.stairsStatus,
         liftStatus: this.liftStatus,
         accessibleToiletStatus: this.accessibleToiletStatus,
         entranceInformation: this.entranceInformation,
+        parkingStatus: this.parkingStatus,
         surfaceCondition: this.surfaceCondition,
+        doorWidthCm: this.doorWidthCm,
+        stepCount: this.stepCount,
         temporaryObstacle: this.temporaryObstacle,
         temporaryObstacleDetails: this.temporaryObstacleDetails,
         notes: this.notes,
@@ -140,6 +201,9 @@ function createReportRecord(data: any): ReportRecord {
         reviewedBy: this.reviewedBy,
         reviewedAt: this.reviewedAt,
         reviewNotes: this.reviewNotes,
+        isCorrection: this.isCorrection,
+        originalReportId: this.originalReportId,
+        correctionNotes: this.correctionNotes,
         createdAt: this.createdAt,
         updatedAt: this.updatedAt,
       };
