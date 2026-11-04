@@ -258,9 +258,57 @@ export const findReportsInStore = async (query: any): Promise<Array<ReportRecord
   if (query.placeId) {
     results = results.filter((r) => r.placeId === query.placeId);
   }
+  if (typeof query.isCorrection === 'boolean') {
+    results = results.filter((r) => !!r.isCorrection === query.isCorrection);
+  }
 
   results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   return results;
+};
+
+export const findReportsPaginatedInStore = async (
+  query: any,
+  options: { page?: number; limit?: number; search?: string } = {}
+): Promise<{ reports: (ReportRecord | IReportDocument)[]; total: number; page: number; totalPages: number }> => {
+  const page = Math.max(1, Number(options.page) || 1);
+  const limit = Math.max(1, Math.min(100, Number(options.limit) || 10));
+  const skip = (page - 1) * limit;
+
+  ensureReportsSeeded();
+  let results = [...inMemoryReports];
+
+  if (query['submittedBy.userId']) {
+    results = results.filter((r) => r.submittedBy.userId === query['submittedBy.userId']);
+  }
+  if (query.reportStatus && query.reportStatus !== 'all') {
+    results = results.filter((r) => r.reportStatus === query.reportStatus);
+  }
+  if (query.placeId) {
+    results = results.filter((r) => r.placeId === query.placeId);
+  }
+  if (typeof query.isCorrection === 'boolean') {
+    results = results.filter((r) => !!r.isCorrection === query.isCorrection);
+  }
+  if (options.search) {
+    const s = options.search.toLowerCase();
+    results = results.filter(
+      (r) =>
+        r.placeName.toLowerCase().includes(s) ||
+        (r.notes && r.notes.toLowerCase().includes(s)) ||
+        (r.submittedBy?.name && r.submittedBy.name.toLowerCase().includes(s))
+    );
+  }
+
+  results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  const total = results.length;
+  const paginated = results.slice(skip, skip + limit);
+
+  return {
+    reports: paginated,
+    total,
+    page,
+    totalPages: Math.ceil(total / limit) || 1,
+  };
 };
 
 export const countReportsInStore = async (query: any): Promise<number> => {

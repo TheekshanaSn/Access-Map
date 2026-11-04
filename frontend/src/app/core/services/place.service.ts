@@ -1,4 +1,6 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable, catchError, of, tap } from 'rxjs';
 import { Place, PlaceFilterCriteria } from '../models/place.model';
 import { MOCK_PLACES } from '../data/mock-places';
 
@@ -6,6 +8,8 @@ import { MOCK_PLACES } from '../data/mock-places';
   providedIn: 'root',
 })
 export class PlaceService {
+  private readonly http = inject(HttpClient);
+
   // Master places signal initialized with realistic demo data
   private readonly placesState = signal<Place[]>(MOCK_PLACES);
 
@@ -135,6 +139,25 @@ export class PlaceService {
     setTimeout(() => {
       this.isLoading.set(false);
     }, 400);
+  }
+
+  /**
+   * Update place details with audit trail support
+   */
+  updatePlace(id: string, updates: Partial<Place>, reason?: string): Observable<any> {
+    return this.http
+      .put<{ message: string; place: Place }>(`/api/places/${id}`, { ...updates, reason })
+      .pipe(
+        catchError((err) => {
+          console.warn('API place update failed, falling back to local signal update:', err);
+          return of({ message: 'Updated locally', place: updates as Place });
+        }),
+        tap(() => {
+          this.placesState.update((prev) =>
+            prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
+          );
+        })
+      );
   }
 }
 

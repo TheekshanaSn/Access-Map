@@ -143,3 +143,87 @@ export const createUser = async (data: {
     role: data.role,
   });
 };
+
+export const findUsersInStore = async (
+  options: { page?: number; limit?: number; search?: string } = {}
+): Promise<{ users: any[]; total: number; page: number; totalPages: number }> => {
+  const page = Math.max(1, Number(options.page) || 1);
+  const limit = Math.max(1, Math.min(100, Number(options.limit) || 20));
+  const skip = (page - 1) * limit;
+
+  if (isDatabaseConnected()) {
+    try {
+      const query: any = {};
+      if (options.search) {
+        query.$or = [
+          { name: { $regex: options.search, $options: 'i' } },
+          { email: { $regex: options.search, $options: 'i' } },
+        ];
+      }
+      const [users, total] = await Promise.all([
+        User.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
+        User.countDocuments(query),
+      ]);
+      return {
+        users: users.map((u) => u.toJSON()),
+        total,
+        page,
+        totalPages: Math.ceil(total / limit) || 1,
+      };
+    } catch {
+      // Fallback
+    }
+  }
+
+  await ensureSeeded();
+  let results = [...inMemoryUsers];
+  if (options.search) {
+    const s = options.search.toLowerCase();
+    results = results.filter((u) => u.name.toLowerCase().includes(s) || u.email.toLowerCase().includes(s));
+  }
+
+  results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  const total = results.length;
+  const paginated = results.slice(skip, skip + limit);
+
+  return {
+    users: paginated.map((u) => u.toJSON()),
+    total,
+    page,
+    totalPages: Math.ceil(total / limit) || 1,
+  };
+};
+
+export const countUsersInStore = async (): Promise<number> => {
+  if (isDatabaseConnected()) {
+    try {
+      return await User.countDocuments();
+    } catch {
+      // Fallback
+    }
+  }
+
+  await ensureSeeded();
+  return inMemoryUsers.length;
+};
+
+export const updateUserRoleInStore = async (
+  userId: string,
+  newRole: UserRole
+): Promise<UserRecord | IUserDocument | null> => {
+  if (isDatabaseConnected()) {
+    try {
+      const user = await User.findByIdAndUpdate(userId, { role: newRole }, { new: true });
+      if (user) return user;
+    } catch {
+      // Fallback
+    }
+  }
+
+  await ensureSeeded();
+  const user = inMemoryUsers.find((u) => u.id === userId);
+  if (!user) return null;
+  user.role = newRole;
+  user.updatedAt = new Date();
+  return user;
+};
