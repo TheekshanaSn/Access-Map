@@ -30,6 +30,11 @@ export interface IPlaceCoordinates {
   lng: number;
 }
 
+export interface IGeoJsonPoint {
+  type: 'Point';
+  coordinates: [number, number]; // [longitude, latitude] in GeoJSON format
+}
+
 export interface ITemporaryObstacle {
   id: string;
   type: 'elevator_out_of_service' | 'ramp_maintenance' | 'construction' | 'blocked_sidewalk';
@@ -45,6 +50,7 @@ export interface IPlace {
   categoryLabel: string;
   address: IPlaceAddress;
   coordinates: IPlaceCoordinates;
+  location?: IGeoJsonPoint;
   overallRating: number;
   reviewCount: number;
   verifiedStatus: VerifiedStatus;
@@ -88,6 +94,14 @@ export interface IPlace {
   isDuplicate?: boolean;
   duplicateOf?: string;
   isDemoData?: boolean;
+  osmId?: string;
+  osmType?: 'node' | 'way' | 'relation';
+  osmTags?: Record<string, string>;
+  dataSource?: 'osm' | 'community' | 'official' | 'manual';
+  sourceAttribution?: string;
+  importBatchId?: string;
+  lastImportDate?: Date | string;
+  accessibilityAuditStatus?: 'unverified_osm' | 'community_reported' | 'staff_verified';
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -122,6 +136,53 @@ const placeSchema = new Schema<IPlaceDocument>(
     coordinates: {
       lat: { type: Number, required: true },
       lng: { type: Number, required: true },
+    },
+    location: {
+      type: {
+        type: String,
+        enum: ['Point'],
+        default: 'Point',
+      },
+      coordinates: {
+        type: [Number], // [lng, lat]
+        default: [80.7718, 7.8731],
+      },
+    },
+    osmId: {
+      type: String,
+      default: null,
+    },
+    osmType: {
+      type: String,
+      enum: ['node', 'way', 'relation'],
+      default: null,
+    },
+    osmTags: {
+      type: Schema.Types.Mixed,
+      default: () => ({}),
+    },
+    dataSource: {
+      type: String,
+      enum: ['osm', 'community', 'official', 'manual'],
+      default: 'community',
+      index: true,
+    },
+    sourceAttribution: {
+      type: String,
+      default: '© OpenStreetMap contributors, ODbL 1.0',
+    },
+    importBatchId: {
+      type: String,
+      default: null,
+    },
+    lastImportDate: {
+      type: Date,
+      default: null,
+    },
+    accessibilityAuditStatus: {
+      type: String,
+      enum: ['unverified_osm', 'community_reported', 'staff_verified'],
+      default: 'unverified_osm',
     },
     overallRating: {
       type: Number,
@@ -194,5 +255,27 @@ const placeSchema = new Schema<IPlaceDocument>(
     },
   }
 );
+
+// Auto-synchronize GeoJSON location from coordinates before validation
+placeSchema.pre('validate', function (next) {
+  if (this.coordinates && typeof this.coordinates.lng === 'number' && typeof this.coordinates.lat === 'number') {
+    if (!this.location || !Array.isArray(this.location.coordinates) || this.location.coordinates.length < 2) {
+      this.location = {
+        type: 'Point',
+        coordinates: [this.coordinates.lng, this.coordinates.lat],
+      };
+    }
+  }
+  next();
+});
+
+// Geospatial 2dsphere index for spatial proximity queries ($near, $geoWithin)
+placeSchema.index({ location: '2dsphere' });
+
+// Sparse unique index to prevent duplicate OSM imports
+placeSchema.index({ osmId: 1 }, { unique: true, sparse: true });
+
+// Compound index for high-performance localized queries
+placeSchema.index({ 'address.city': 1, category: 1 });
 
 export const PlaceModel = mongoose.model<IPlaceDocument>('Place', placeSchema);

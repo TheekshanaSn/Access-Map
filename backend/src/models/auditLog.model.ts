@@ -7,7 +7,8 @@ export type AdminActionType =
   | 'PLACE_CREATED'
   | 'PLACE_UPDATED'
   | 'PLACE_DUPLICATE_RESOLVED'
-  | 'USER_ROLE_CHANGED';
+  | 'USER_ROLE_CHANGED'
+  | 'OSM_DATA_IMPORTED';
 
 export interface IAuditLog {
   action: AdminActionType;

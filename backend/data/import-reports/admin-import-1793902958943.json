@@ -1,0 +1,37 @@
+{
+  "batchId": "admin-import-1793902958943",
+  "timestamp": "2026-11-05T18:22:38.943Z",
+  "sourceName": "Sri Lanka Sample Public Facilities",
+  "dryRun": true,
+  "totalElements": 28,
+  "importedCount": 28,
+  "updatedCount": 0,
+  "preservedCommunityCount": 0,
+  "skippedCount": 0,
+  "errorCount": 0,
+  "errors": [],
+  "executionTimeMs": 0,
+  "categoriesBreakdown": {
+    "healthcare": 12,
+    "transport": 5,
+    "education": 2,
+    "government": 2,
+    "parks": 2,
+    "culture": 3,
+    "restroom": 2
+  },
+  "citiesBreakdown": {
+    "Colombo": 8,
+    "Kandy": 5,
+    "Galle": 4,
+    "Matara": 1,
+    "Jaffna": 3,
+    "Negombo": 1,
+    "Kurunegala": 1,
+    "Anuradhapura": 1,
+    "Trincomalee": 1,
+    "Batticaloa": 1,
+    "Ratnapura": 1,
+    "Badulla": 1
+  }
+}

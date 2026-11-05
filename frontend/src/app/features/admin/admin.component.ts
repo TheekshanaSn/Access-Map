@@ -9,7 +9,7 @@ import { AdminService, AdminOverviewMetrics, AuditLogItem, DuplicatePlacePair, A
 import { AccessibilityReport, ModerationStatus } from '../../core/models/report.model';
 import { Place, PlaceCategory } from '../../core/models/place.model';
 
-type AdminTab = 'overview' | 'moderation' | 'places' | 'duplicates' | 'audit-trail' | 'users';
+type AdminTab = 'overview' | 'moderation' | 'places' | 'duplicates' | 'audit-trail' | 'users' | 'osm-data';
 
 @Component({
   selector: 'app-admin',
@@ -162,6 +162,17 @@ type AdminTab = 'overview' | 'moderation' | 'places' | 'duplicates' | 'audit-tra
             <span>👥 User Roles</span>
           </button>
         }
+          <button
+            type="button"
+            (click)="setActiveTab('osm-data')"
+            [class.bg-teal-700]="activeTab() === 'osm-data'"
+            [class.text-white]="activeTab() === 'osm-data'"
+            [class.bg-slate-100]="activeTab() !== 'osm-data'"
+            [class.text-slate-700]="activeTab() !== 'osm-data'"
+            class="px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer flex items-center gap-2 shadow-2xs"
+          >
+            <span>Sri Lanka OSM Data</span>
+          </button>
       </nav>
 
       <!-- TAB 1: SYSTEM OVERVIEW & METRICS -->
@@ -898,6 +909,103 @@ type AdminTab = 'overview' | 'moderation' | 'places' | 'duplicates' | 'audit-tra
         </section>
       }
 
+      <!-- TAB 7: SRI LANKA OPENSTREETMAP DATA INGESTION -->
+      @if (activeTab() === 'osm-data' && isAdmin()) {
+        <section class="space-y-6" aria-label="Sri Lanka OpenStreetMap Data Ingestion">
+          
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-900 text-[11px] font-bold mb-2">
+                Real OpenStreetMap Extract • Step 12
+              </div>
+              <h2 class="text-xl font-black text-slate-900">Sri Lanka Geographic Data Ingestion</h2>
+              <p class="text-xs text-slate-600 max-w-2xl mt-1">
+                Import verified Sri Lankan public facilities (hospitals, clinics, universities, schools, railway stations, bus stands, town halls, restrooms, parks) from OpenStreetMap.
+              </p>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                [disabled]="osmImportLoading()"
+                (click)="triggerOsmImport(true)"
+                class="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+              >
+                <span>Test Dry-Run</span>
+              </button>
+
+              <button
+                type="button"
+                [disabled]="osmImportLoading()"
+                (click)="triggerOsmImport(false)"
+                class="px-5 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold transition-all cursor-pointer shadow-xs flex items-center gap-2"
+              >
+                @if (osmImportLoading()) {
+                  <span class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  <span>Importing Dataset...</span>
+                } @else {
+                  <span>Import Public Facilities</span>
+                }
+              </button>
+            </div>
+          </div>
+
+          <!-- Crucial Standards & Guidelines Notice -->
+          <div class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-1.5">
+            <div class="flex items-center gap-2 font-bold text-amber-950">
+              <span>Important Architectural & Data Integrity Rules</span>
+            </div>
+            <ul class="list-disc list-inside space-y-1 text-amber-800 text-[11px]">
+              <li><strong>Zero Presumed Accessibility:</strong> Locations imported from OpenStreetMap do NOT automatically have verified accessibility. All records default to pending_verification until physically audited.</li>
+              <li><strong>Preserve Source Provenance:</strong> Original OSM element IDs (node/123, way/456), raw tags, and ODbL attribution are permanently recorded.</li>
+              <li><strong>Non-Destructive Updates:</strong> Community audits, photos, and verified reports are <strong>never overwritten</strong> by re-importing OSM updates.</li>
+              <li><strong>Geospatial Structure:</strong> Coordinates are indexed with MongoDB 2dsphere for high-performance proximity queries.</li>
+            </ul>
+          </div>
+
+          <!-- Latest Import Results Summary Card -->
+          @if (osmImportSummary(); as summary) {
+            <div class="bg-white rounded-2xl border border-teal-200 p-6 space-y-5 shadow-xs">
+              <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div class="space-y-0.5">
+                  <h3 class="text-sm font-black text-slate-900">
+                    {{ summary.dryRun ? 'Dry-Run Simulation Summary' : 'Import Execution Summary' }}
+                  </h3>
+                  <p class="text-[11px] text-slate-500">Batch ID: <code class="font-mono">{{ summary.batchId }}</code> • Source: {{ summary.sourceName }}</p>
+                </div>
+                <span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
+                  [class.bg-amber-100]="summary.dryRun"
+                  [class.text-amber-900]="summary.dryRun"
+                  [class.bg-emerald-100]="!summary.dryRun"
+                  [class.text-emerald-900]="!summary.dryRun">
+                  {{ summary.dryRun ? 'Simulated' : 'Committed' }}
+                </span>
+              </div>
+
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  <span class="text-xl font-black text-slate-900 block">{{ summary.totalElements }}</span>
+                  <span class="text-[11px] text-slate-500 uppercase font-bold">Total Evaluated</span>
+                </div>
+                <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+                  <span class="text-xl font-black text-emerald-800 block">{{ summary.importedCount }}</span>
+                  <span class="text-[11px] text-emerald-600 uppercase font-bold">New Places</span>
+                </div>
+                <div class="p-3 bg-blue-50 rounded-xl border border-blue-200">
+                  <span class="text-xl font-black text-blue-800 block">{{ summary.updatedCount }}</span>
+                  <span class="text-[11px] text-blue-600 uppercase font-bold">Updated Places</span>
+                </div>
+                <div class="p-3 bg-purple-50 rounded-xl border border-purple-200">
+                  <span class="text-xl font-black text-purple-800 block">{{ summary.preservedCommunityCount }}</span>
+                  <span class="text-[11px] text-purple-600 uppercase font-bold">Preserved Audits</span>
+                </div>
+              </div>
+            </div>
+          }
+
+        </section>
+      }
+
       <!-- MODAL: DECISION CONFIRMATION (APPROVE / REJECT / CORRECTION) -->
       @if (activeDecisionModal()) {
         <div class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -1077,6 +1185,8 @@ export class AdminComponent implements OnInit {
   usersList = signal<AdminUserItem[]>([]);
   detectedDuplicates = signal<DuplicatePlacePair[]>([]);
   reportsLoading = signal<boolean>(false);
+  osmImportLoading = signal<boolean>(false);
+  osmImportSummary = signal<any | null>(null);
   actionNotification = signal<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Moderation state
@@ -1335,6 +1445,31 @@ export class AdminComponent implements OnInit {
           this.loadOverview();
         },
       });
+  }
+
+  triggerOsmImport(dryRun = false): void {
+    this.osmImportLoading.set(true);
+    this.adminService.importOsmData({ sample: true, dryRun }).subscribe({
+      next: (res) => {
+        this.osmImportLoading.set(false);
+        this.osmImportSummary.set(res.summary);
+        this.actionNotification.set({
+          message: res.message || 'OSM Data import executed successfully',
+          type: 'success',
+        });
+        if (!dryRun) {
+          this.loadOverview();
+          this.placeService.refreshPlaces();
+        }
+      },
+      error: (err) => {
+        this.osmImportLoading.set(false);
+        this.actionNotification.set({
+          message: err?.error?.message || 'Failed to execute OSM data import',
+          type: 'error',
+        });
+      },
+    });
   }
 
   changeUserRole(user: AdminUserItem, event: Event): void {

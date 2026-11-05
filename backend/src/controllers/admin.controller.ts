@@ -1,9 +1,13 @@
 import { Request, Response } from 'express';
+import fs from 'fs';
+import path from 'path';
 import { countPlacesInStore, detectDuplicatePlacesInStore } from '../services/placeStore';
 import { countReportsInStore } from '../services/reportStore';
 import { countUsersInStore, findUsersInStore, updateUserRoleInStore, findUserById } from '../services/userStore';
 import { findAuditLogsInStore, recordAuditLog } from '../services/auditLogStore';
 import { UserRole } from '../models/user.model';
+import { importOsmElements } from '../services/osmImport.service';
+import { SRI_LANKA_OSM_SAMPLE_FACILITIES } from '../data/sri-lanka-osm-sample';
 
 /**
  * Administrative Overview & Statistics
@@ -195,6 +199,82 @@ export const updateUserRole = async (req: Request, res: Response): Promise<void>
     res.status(500).json({
       error: 'Failed to update user role',
       message: err.message,
+    });
+  }
+};
+
+/**
+ * Trigger Sri Lanka OpenStreetMap data import
+ * POST /api/admin/osm-import
+ * Protected: Admin only
+ */
+export const importOsmDataset = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { elements, sample, dryRun, sourceName } = req.body || {};
+    let dataToImport = elements;
+
+    if (sample || (!dataToImport && !Array.isArray(dataToImport))) {
+      dataToImport = SRI_LANKA_OSM_SAMPLE_FACILITIES;
+    }
+
+    const summary = await importOsmElements(dataToImport, {
+      batchId: `admin-import-${Date.now()}`,
+      sourceName: sourceName || (sample ? 'Sri Lanka Sample Public Facilities' : 'Custom OSM Upload'),
+      dryRun: !!dryRun,
+      importedBy: req.user
+        ? {
+            userId: req.user.userId,
+            email: req.user.email,
+            role: req.user.role,
+          }
+        : undefined,
+    });
+
+    res.status(200).json({
+      message: dryRun ? 'OSM Import Dry-Run Completed Successfully' : 'OSM Dataset Successfully Imported',
+      summary,
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      error: 'OSM Import Failed',
+      message: err?.message || 'An error occurred during OpenStreetMap data ingestion',
+    });
+  }
+};
+
+/**
+ * List past OSM import reports
+ * GET /api/admin/osm-import/history
+ * Protected: Admin only
+ */
+export const getOsmImportHistory = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const reportsDir = path.resolve(process.cwd(), 'data', 'import-reports');
+    if (!fs.existsSync(reportsDir)) {
+      res.status(200).json({ reports: [] });
+      return;
+    }
+
+    const files = fs
+      .readdirSync(reportsDir)
+      .filter((f) => f.endsWith('.json'))
+      .slice(-20)
+      .reverse();
+
+    const reports = files.map((f) => {
+      try {
+        const content = fs.readFileSync(path.join(reportsDir, f), 'utf-8');
+        return JSON.parse(content);
+      } catch {
+        return { filename: f, error: 'Could not read log file' };
+      }
+    });
+
+    res.status(200).json({ reports });
+  } catch (err: any) {
+    res.status(500).json({
+      error: 'Failed to retrieve import history',
+      message: err?.message || 'Failed to list reports',
     });
   }
 };
