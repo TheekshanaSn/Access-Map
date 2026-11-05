@@ -16,6 +16,7 @@ import { CommonModule } from '@angular/common';
 import * as L from 'leaflet';
 import { Place, PlaceCategory } from '../../../core/models/place.model';
 import { PlannedRoute, PathSegment } from '../../../core/models/route.model';
+import { environment } from '../../../../environments/environment';
 
 export interface CategoryMarkerStyle {
   color: string;
@@ -61,7 +62,7 @@ export interface CategoryMarkerStyle {
       <div class="absolute bottom-2 left-2 z-[400] pointer-events-auto hidden sm:block">
         <div class="px-2.5 py-1 rounded-md bg-white/90 backdrop-blur-xs text-[10px] text-slate-600 shadow-xs border border-slate-200/80 flex items-center gap-1.5">
           <span class="w-2 h-2 rounded-full bg-teal-600 inline-block" aria-hidden="true"></span>
-          <span>AccessMap Mobility Layer • Demo Data</span>
+          <span>AccessMap Sri Lanka • OpenStreetMap</span>
         </div>
       </div>
 
@@ -82,8 +83,8 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
 
   @Input() places: Place[] = [];
   @Input() selectedPlace: Place | null = null;
-  @Input() center: [number, number] = [40.718, -74.004]; // Metro City default
-  @Input() zoom = 13;
+  @Input() center: [number, number] = environment.mapCenter || [7.8731, 80.7718]; // Sri Lanka center
+  @Input() zoom = environment.mapZoom || 7; // Displays full island on load
   @Input() userLocation: [number, number] | null = null;
   @Input() activeRoute: PlannedRoute | null = null;
   @Input() interactive = true;
@@ -194,10 +195,17 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
   private initMap(): void {
     if (!this.mapElementRef?.nativeElement) return;
 
-    // Initialize Leaflet Map
+    // Initialize Leaflet Map centered over Sri Lanka with geographic bounds
     this.map = L.map(this.mapElementRef.nativeElement, {
       center: this.center,
       zoom: this.zoom,
+      minZoom: environment.mapMinZoom || 6,
+      maxZoom: environment.mapMaxZoom || 19,
+      maxBounds: environment.mapBounds || [
+        [5.0, 78.5],
+        [10.5, 83.0],
+      ],
+      maxBoundsViscosity: 0.8,
       zoomControl: this.interactive,
       dragging: this.interactive,
       touchZoom: this.interactive,
@@ -205,12 +213,17 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
       doubleClickZoom: this.interactive,
     });
 
-    // High quality OpenStreetMap tiles with correct attribution
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
+    // High quality OpenStreetMap tiles with configurable provider & attribution
+    const tileUrl =
+      environment.mapTileUrl || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    const attribution =
+      environment.mapAttribution ||
+      '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
+
+    L.tileLayer(tileUrl, {
+      attribution,
       maxZoom: 19,
-      minZoom: 4,
+      minZoom: 6,
     }).addTo(this.map);
 
     this.markersLayer = L.layerGroup().addTo(this.map);

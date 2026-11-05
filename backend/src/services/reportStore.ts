@@ -215,7 +215,11 @@ function createReportRecord(data: any): ReportRecord {
 
 export const createReportInStore = async (data: any): Promise<ReportRecord | IReportDocument> => {
   if (isDatabaseConnected() || AccessibilityReport.create !== defaultReportCreate) {
-    return AccessibilityReport.create(data);
+    try {
+      return await AccessibilityReport.create(data);
+    } catch (err: any) {
+      console.warn('[ReportStore] Database create failed or timed out. Falling back to in-memory store:', err?.message || err);
+    }
   }
 
   ensureReportsSeeded();
@@ -228,7 +232,12 @@ export const createReportInStore = async (data: any): Promise<ReportRecord | IRe
 
 export const findReportById = async (id: string): Promise<ReportRecord | IReportDocument | null> => {
   if (isDatabaseConnected() || AccessibilityReport.findById !== defaultReportFindById) {
-    return AccessibilityReport.findById(id);
+    try {
+      const result = await AccessibilityReport.findById(id);
+      return result || null;
+    } catch (err: any) {
+      console.warn('[ReportStore] Database findById failed or timed out. Falling back to in-memory store:', err?.message || err);
+    }
   }
 
   ensureReportsSeeded();
@@ -238,12 +247,17 @@ export const findReportById = async (id: string): Promise<ReportRecord | IReport
 
 export const findReportsInStore = async (query: any): Promise<Array<ReportRecord | IReportDocument>> => {
   if (isDatabaseConnected() || AccessibilityReport.find !== defaultReportFind) {
-    const q: any = AccessibilityReport.find(query);
-    if (q && typeof q.sort === 'function') {
-      const sorted = q.sort({ createdAt: -1 });
-      return sorted && typeof sorted.limit === 'function' ? sorted.limit(100) : sorted;
+    try {
+      const q: any = AccessibilityReport.find(query);
+      if (q && typeof q.sort === 'function') {
+        const sorted = q.sort({ createdAt: -1 });
+        const result = sorted && typeof sorted.limit === 'function' ? await sorted.limit(100) : await sorted;
+        return result || [];
+      }
+      return (await q) || [];
+    } catch (err: any) {
+      console.warn('[ReportStore] Database find failed or timed out. Falling back to in-memory store:', err?.message || err);
     }
-    return q;
   }
 
   ensureReportsSeeded();
