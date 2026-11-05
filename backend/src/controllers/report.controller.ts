@@ -4,8 +4,11 @@ import {
   createReportInStore,
   findReportById,
   findReportsInStore,
+  findReportsPaginatedInStore,
   countReportsInStore,
 } from '../services/reportStore';
+import { recordAuditLog } from '../services/auditLogStore';
+import { AdminActionType } from '../models/auditLog.model';
 
 /**
  * Upload evidence photos for an accessibility report
@@ -263,17 +266,38 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
     }
 
     const query: any = {};
+    const { page, limit, search, isCorrection } = req.query;
 
     // Role-based visibility scoping
     if (req.user.role === 'user') {
       query['submittedBy.userId'] = req.user.userId;
     } else {
-      if (req.query.status) {
+      if (req.query.status && req.query.status !== 'all') {
         query.reportStatus = req.query.status;
       }
       if (req.query.placeId) {
         query.placeId = req.query.placeId;
       }
+      if (isCorrection !== undefined) {
+        query.isCorrection = isCorrection === 'true';
+      }
+    }
+
+    if (page || limit || search) {
+      const paginated = await findReportsPaginatedInStore(query, {
+        page: page ? Number(page) : 1,
+        limit: limit ? Number(limit) : 20,
+        search: search ? String(search) : undefined,
+      });
+
+      res.status(200).json({
+        count: paginated.reports.length,
+        reports: paginated.reports.map((r) => r.toJSON()),
+        total: paginated.total,
+        page: paginated.page,
+        totalPages: paginated.totalPages,
+      });
+      return;
     }
 
     const reports = await findReportsInStore(query);
@@ -281,6 +305,9 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
     res.status(200).json({
       count: reports.length,
       reports: reports.map((r) => r.toJSON()),
+      total: reports.length,
+      page: 1,
+      totalPages: 1,
     });
   } catch (err: any) {
     res.status(500).json({
@@ -294,7 +321,10 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
  * Update report moderation status
  * PATCH /api/reports/:id/status
  * Strictly protected: Moderators and Administrators only
- * Safety requirement: Users cannot approve their own reports
+ * Safety requirements:
+ * 1. Users cannot approve their own reports.
+ * 2. Rejecting or requesting corrections requires a reason.
+ * 3. Administrative audit trail logged.
  */
 export const updateReportStatus = async (
   req: Request,
@@ -310,7 +340,17 @@ export const updateReportStatus = async (
     }
 
     const { id } = req.params;
-    const { status, reviewNotes } = req.body;
+    const { status, reviewNotes, reason } = req.body;
+    const effectiveReason = (reviewNotes || reason || '').trim();
+
+    // Enforce reason for negative/correction moderation decisions
+    if ((status === 'rejected' || status === 'needs_review') && !effectiveReason) {
+      res.status(400).json({
+        error: 'Validation Error',
+        message: `A reason is required when marking a report as ${status === 'needs_review' ? 'needing corrections' : 'rejected'}`,
+      });
+      return;
+    }
 
     const report = await findReportById(id);
     if (!report) {
@@ -331,15 +371,37 @@ export const updateReportStatus = async (
       return;
     }
 
+    const previousStatus = report.reportStatus;
+
     // Update status and reviewer audit trail
     report.reportStatus = status as ReportModerationStatus;
     report.reviewedBy = req.user.userId as any;
     report.reviewedAt = new Date();
-    if (reviewNotes) {
-      report.reviewNotes = reviewNotes;
+    if (effectiveReason) {
+      report.reviewNotes = effectiveReason;
     }
 
     await report.save();
+
+    // Record audit log
+    let actionType: AdminActionType = 'REPORT_APPROVED';
+    if (status === 'rejected') actionType = 'REPORT_REJECTED';
+    if (status === 'needs_review') actionType = 'REPORT_CORRECTION_REQUESTED';
+
+    await recordAuditLog({
+      action: actionType,
+      performedBy: {
+        userId: req.user.userId,
+        name: req.user.email,
+        email: req.user.email,
+        role: req.user.role,
+      },
+      targetType: 'report',
+      targetId: report.id,
+      targetName: report.placeName,
+      reason: effectiveReason || `Report marked as ${status}`,
+      details: { previousStatus, newStatus: status },
+    });
 
     res.status(200).json({
       message: `Report status successfully updated to ${status}`,

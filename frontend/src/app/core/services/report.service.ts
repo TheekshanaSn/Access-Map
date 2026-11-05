@@ -315,10 +315,103 @@ export class ReportService {
   }
 
   /**
+   * Fetch reports for administrator review with filters and pagination
+   */
+  fetchAdminReports(params: {
+    status?: string;
+    isCorrection?: boolean;
+    page?: number;
+    limit?: number;
+    search?: string;
+  } = {}): Observable<{ reports: AccessibilityReport[]; total: number; page: number; totalPages: number }> {
+    const httpParams: any = {};
+    if (params.status && params.status !== 'all') httpParams.status = params.status;
+    if (typeof params.isCorrection === 'boolean') httpParams.isCorrection = params.isCorrection;
+    if (params.page) httpParams.page = params.page;
+    if (params.limit) httpParams.limit = params.limit;
+    if (params.search) httpParams.search = params.search;
+
+    return this.http
+      .get<{ count: number; reports: any[]; total?: number; page?: number; totalPages?: number }>('/api/reports', {
+        params: httpParams,
+      })
+      .pipe(
+        map((res) => {
+          const list: AccessibilityReport[] = res.reports.map((raw) => ({
+            id: raw.id || raw._id,
+            placeId: raw.placeId,
+            placeName: raw.placeName,
+            isProposedPlace: raw.isProposedPlace,
+            proposedPlaceDetails: raw.proposedPlaceDetails,
+            reporterName: raw.submittedBy?.name || 'Community Auditor',
+            reporterRole: (raw.submittedBy?.role as ReporterRole) || 'community_auditor',
+            reporterRoleLabel: raw.submittedBy?.role || 'Community Auditor',
+            submissionDate: (raw.createdAt || new Date().toISOString()).split('T')[0],
+            rating: 'partially_accessible',
+            ratingLabel: 'Audit Record',
+            rampStatus: raw.rampStatus,
+            stairsStatus: raw.stairsStatus,
+            liftStatus: raw.liftStatus,
+            accessibleToiletStatus: raw.accessibleToiletStatus,
+            entranceInformation: raw.entranceInformation,
+            parkingStatus: raw.parkingStatus,
+            surfaceCondition: raw.surfaceCondition,
+            doorWidthCm: raw.doorWidthCm,
+            stepCount: raw.stepCount,
+            hasTemporaryObstacle: raw.temporaryObstacle,
+            temporaryObstacleDetails: raw.temporaryObstacleDetails,
+            notes: raw.notes,
+            evidenceImageReferences: raw.evidenceImageReferences || [],
+            moderationStatus: raw.reportStatus || 'pending',
+            reportStatus: raw.reportStatus || 'pending',
+            reviewedBy: raw.reviewedBy,
+            reviewedAt: raw.reviewedAt,
+            reviewNotes: raw.reviewNotes,
+            isCorrection: raw.isCorrection,
+            originalReportId: raw.originalReportId,
+            correctionNotes: raw.correctionNotes,
+            createdAt: raw.createdAt,
+            updatedAt: raw.updatedAt,
+            isDemoData: false,
+          }));
+
+          return {
+            reports: list,
+            total: res.total ?? list.length,
+            page: res.page ?? 1,
+            totalPages: res.totalPages ?? 1,
+          };
+        }),
+        catchError((err) => {
+          console.warn('Could not fetch admin reports, falling back to local signal:', err);
+          let filtered = this.reportsState();
+          if (params.status && params.status !== 'all') {
+            filtered = filtered.filter((r) => r.moderationStatus === params.status || r.reportStatus === params.status);
+          }
+          if (typeof params.isCorrection === 'boolean') {
+            filtered = filtered.filter((r) => !!r.isCorrection === params.isCorrection);
+          }
+          if (params.search) {
+            const s = params.search.toLowerCase();
+            filtered = filtered.filter(
+              (r) => r.placeName.toLowerCase().includes(s) || (r.notes && r.notes.toLowerCase().includes(s))
+            );
+          }
+          return of({
+            reports: filtered,
+            total: filtered.length,
+            page: 1,
+            totalPages: 1,
+          });
+        })
+      );
+  }
+
+  /**
    * Update report moderation status
    */
-  updateModerationStatus(reportId: string, status: ModerationStatus, reviewNotes?: string): void {
-    this.http
+  updateModerationStatus(reportId: string, status: ModerationStatus, reviewNotes?: string): Observable<any> {
+    const obs$ = this.http
       .patch<{ message: string; report: any }>(`/api/reports/${reportId}/status`, {
         status,
         reviewNotes,
@@ -326,17 +419,21 @@ export class ReportService {
       .pipe(
         catchError((err) => {
           console.warn('API status update unavailable:', err);
-          return of(null);
+          return of({ message: 'Updated locally', report: { id: reportId, reportStatus: status, reviewNotes } });
+        }),
+        tap(() => {
+          this.reportsState.update((prev) =>
+            prev.map((rep) =>
+              rep.id === reportId
+                ? { ...rep, moderationStatus: status, reportStatus: status, reviewNotes }
+                : rep
+            )
+          );
         })
-      )
-      .subscribe(() => {
-        this.reportsState.update((prev) =>
-          prev.map((rep) =>
-            rep.id === reportId
-              ? { ...rep, moderationStatus: status, reportStatus: status, reviewNotes }
-              : rep
-          )
-        );
-      });
+      );
+
+    // Subscribe immediately so void-caller compatibility is maintained
+    obs$.subscribe();
+    return obs$;
   }
 }

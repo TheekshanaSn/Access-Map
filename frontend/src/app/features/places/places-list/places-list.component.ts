@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { PlaceService } from '../../../core/services/place.service';
+import { DeviceNetworkService } from '../../../core/services/device-network.service';
 import { PlaceCardComponent } from '../../../shared/components/place-card/place-card.component';
 import { PlaceCategory } from '../../../core/models/place.model';
 
@@ -42,6 +43,19 @@ import { PlaceCategory } from '../../../core/models/place.model';
           </a>
         </div>
       </div>
+
+      <!-- Offline Stale Data Indicator Banner (Requirement 7) -->
+      @if (!networkService.isOnline()) {
+        <div class="p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs flex items-center justify-between">
+          <span class="flex items-center gap-1.5 font-bold">
+            <span>💾</span>
+            <span>Offline Mode • Showing cached places from local storage</span>
+          </span>
+          <span class="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md font-bold uppercase">
+            Offline Cache
+          </span>
+        </div>
+      }
 
       <!-- Search & Filters Container -->
       <section class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-5" aria-labelledby="filter-section-title">
@@ -239,6 +253,7 @@ import { PlaceCategory } from '../../../core/models/place.model';
 })
 export class PlacesListComponent implements OnInit {
   private readonly placeService = inject(PlaceService);
+  readonly networkService = inject(DeviceNetworkService);
   private readonly route = inject(ActivatedRoute);
 
   readonly allPlaces = this.placeService.allPlaces;

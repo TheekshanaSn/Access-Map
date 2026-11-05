@@ -92,6 +92,8 @@ export interface Place {
   fullDescription: string;
   transitTips: string;
   entranceTips: string;
+  isDuplicate?: boolean;
+  duplicateOf?: string;
   isDemoData: boolean;
 }
 

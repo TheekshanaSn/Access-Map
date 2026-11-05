@@ -21,6 +21,11 @@ export const routes: Routes = [
     title: 'Explore Map — AccessMap',
   },
   {
+    path: 'plan-route',
+    component: ExploreMapComponent,
+    title: 'Plan Accessible Route — AccessMap',
+  },
+  {
     path: 'places',
     component: PlacesListComponent,
     title: 'Accessible Places Directory — AccessMap',
@@ -49,6 +54,12 @@ export const routes: Routes = [
     path: 'register',
     component: AuthComponent,
     title: 'Register — AccessMap',
+  },
+  {
+    path: 'profile',
+    loadComponent: () =>
+      import('./features/profile/profile.component').then((m) => m.ProfileComponent),
+    title: 'Mobile Profile & Settings — AccessMap',
   },
   {
     path: 'admin',

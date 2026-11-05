@@ -51,6 +51,14 @@ import { AuthService } from '../../../core/services/auth.service';
               Explore Map
             </a>
             <a
+              routerLink="/plan-route"
+              routerLinkActive="bg-teal-50 text-teal-800 font-bold border-teal-200"
+              class="px-3.5 py-2.5 rounded-lg text-sm font-semibold text-slate-700 hover:text-teal-800 hover:bg-slate-50 transition-colors border border-transparent flex items-center gap-1.5"
+            >
+              <span>🧭</span>
+              <span>Plan Route</span>
+            </a>
+            <a
               routerLink="/places"
               routerLinkActive="bg-teal-50 text-teal-800 font-bold border-teal-200"
               class="px-3.5 py-2.5 rounded-lg text-sm font-semibold text-slate-700 hover:text-teal-800 hover:bg-slate-50 transition-colors border border-transparent"
@@ -174,6 +182,15 @@ import { AuthService } from '../../../core/services/auth.service';
             class="block px-4 py-3 rounded-lg text-base font-medium text-slate-800 hover:bg-slate-50 min-h-[48px] flex items-center"
           >
             Explore Map
+          </a>
+          <a
+            routerLink="/plan-route"
+            (click)="closeMobileMenu()"
+            routerLinkActive="bg-teal-50 text-teal-800 font-bold"
+            class="block px-4 py-3 rounded-lg text-base font-medium text-slate-800 hover:bg-slate-50 min-h-[48px] flex items-center gap-2"
+          >
+            <span>🧭</span>
+            <span>Plan Route</span>
           </a>
           <a
             routerLink="/places"
