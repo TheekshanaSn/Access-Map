@@ -108,6 +108,15 @@ import { MapComponent } from '../../../shared/components/map/map.component';
                 <span>View On Map</span>
               </a>
 
+              <a
+                routerLink="/plan-route"
+                [queryParams]="{ destId: p.id, mode: 'route' }"
+                class="min-h-[48px] px-5 py-3 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-800 font-bold text-sm transition-colors flex items-center gap-2 border border-teal-200"
+              >
+                <span aria-hidden="true">🧭</span>
+                <span>Plan Route Here</span>
+              </a>
+
               <span class="text-xs text-slate-500 ml-auto font-medium">
                 Last Physical Audit: {{ p.lastAuditDate }}
               </span>

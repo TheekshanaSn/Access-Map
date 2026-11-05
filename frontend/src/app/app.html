@@ -8,18 +8,26 @@
     Skip to main content
   </a>
 
+  <!-- Real-time Network Status & Offline Stale Data Banner -->
+  <app-network-banner></app-network-banner>
+
   <!-- Top Demo / Realistic Data Notice Banner -->
   <app-demo-banner></app-demo-banner>
 
-  <!-- Sticky Top Navigation Bar -->
+  <!-- Sticky Top Navigation Bar (Desktop & Tablet) -->
   <app-navbar></app-navbar>
 
-  <!-- Main Application Router Viewport -->
-  <main id="main-content" class="flex-1 w-full" tabindex="-1">
+  <!-- Main Application Router Viewport (with bottom padding for mobile tab bar) -->
+  <main id="main-content" class="flex-1 w-full pb-20 md:pb-0" tabindex="-1">
     <router-outlet></router-outlet>
   </main>
 
-  <!-- Accessibility-First Footer -->
-  <app-footer></app-footer>
+  <!-- Accessibility-First Footer (Desktop/Tablet) -->
+  <div class="hidden md:block">
+    <app-footer></app-footer>
+  </div>
+
+  <!-- Mobile Bottom Tab Bar (Visible on mobile viewports & Capacitor Android) -->
+  <app-mobile-tab-nav></app-mobile-tab-nav>
 
 </div>

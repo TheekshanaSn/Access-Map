@@ -1,0 +1,10 @@
+{
+  "appId": "org.accessmap.app",
+  "appName": "AccessMap",
+  "webDir": "public",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  }
+}
+

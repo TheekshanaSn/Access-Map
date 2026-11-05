@@ -3,12 +3,16 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, catchError, of, tap } from 'rxjs';
 import { Place, PlaceFilterCriteria } from '../models/place.model';
 import { MOCK_PLACES } from '../data/mock-places';
+import { DeviceStorageService } from './device-storage.service';
+import { DeviceNetworkService } from './device-network.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class PlaceService {
   private readonly http = inject(HttpClient);
+  private readonly storageService = inject(DeviceStorageService);
+  private readonly networkService = inject(DeviceNetworkService);
 
   // Master places signal initialized with realistic demo data
   private readonly placesState = signal<Place[]>(MOCK_PLACES);
@@ -16,6 +20,20 @@ export class PlaceService {
   // Loading and error states for responsive feedback
   readonly isLoading = signal<boolean>(false);
   readonly errorMessage = signal<string | null>(null);
+  readonly isOfflineData = signal<boolean>(false);
+
+  constructor() {
+    this.hydrateFromCache();
+  }
+
+  private async hydrateFromCache(): Promise<void> {
+    const cached = await this.storageService.getCachedPlaces();
+    if (cached && cached.length > 0) {
+      this.placesState.set(cached);
+    } else {
+      await this.storageService.cachePlaces(MOCK_PLACES);
+    }
+  }
 
   // Active filter criteria signal
   readonly filterCriteria = signal<PlaceFilterCriteria>({

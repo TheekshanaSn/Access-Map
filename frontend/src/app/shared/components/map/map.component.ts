@@ -15,6 +15,7 @@ import {
 import { CommonModule } from '@angular/common';
 import * as L from 'leaflet';
 import { Place, PlaceCategory } from '../../../core/models/place.model';
+import { PlannedRoute, PathSegment } from '../../../core/models/route.model';
 
 export interface CategoryMarkerStyle {
   color: string;
@@ -84,6 +85,7 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
   @Input() center: [number, number] = [40.718, -74.004]; // Metro City default
   @Input() zoom = 13;
   @Input() userLocation: [number, number] | null = null;
+  @Input() activeRoute: PlannedRoute | null = null;
   @Input() interactive = true;
   @Input() showControls = true;
   @Input() ariaLabel = 'Interactive accessibility map';
@@ -94,6 +96,7 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
   private map?: L.Map;
   private markersLayer?: L.LayerGroup;
   private userLocationLayer?: L.LayerGroup;
+  private routeLayer?: L.LayerGroup;
   private resizeObserver?: ResizeObserver;
 
   // Visual marker styles per venue category
@@ -175,6 +178,10 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
     if (changes['userLocation']) {
       this.renderUserLocation();
     }
+
+    if (changes['activeRoute']) {
+      this.renderActiveRoute();
+    }
   }
 
   ngOnDestroy(): void {
@@ -208,9 +215,11 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
 
     this.markersLayer = L.layerGroup().addTo(this.map);
     this.userLocationLayer = L.layerGroup().addTo(this.map);
+    this.routeLayer = L.layerGroup().addTo(this.map);
 
     this.renderPlaceMarkers();
     this.renderUserLocation();
+    this.renderActiveRoute();
 
     // Trigger initial invalidateSize to ensure correct tile loading
     setTimeout(() => {
@@ -487,6 +496,92 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
     );
 
     this.userLocationLayer.addLayer(userMarker);
+  }
+
+  private renderActiveRoute(): void {
+    if (!this.map || !this.routeLayer) return;
+
+    this.routeLayer.clearLayers();
+    if (!this.activeRoute) return;
+
+    // Render color-coded path segments according to accessibility & data certainty
+    this.activeRoute.segments.forEach((seg) => {
+      let color = '#0d9488'; // Default teal (verified accessible)
+      let dashArray: string | undefined = undefined;
+      const weight = 6;
+
+      if (seg.hasStairs || !seg.isAccessible) {
+        color = '#e11d48'; // Red (inaccessible / stairs / obstacle)
+        dashArray = '6, 6';
+      } else if (seg.verificationLevel === 'missing' || seg.surfaceType === 'unknown') {
+        color = '#d97706'; // Amber (missing data - caution)
+        dashArray = '4, 6';
+      } else if (seg.surfaceType === 'cobblestone') {
+        color = '#7c3aed'; // Purple (vibration cobblestone)
+      }
+
+      const poly = L.polyline(seg.coordinates, {
+        color,
+        weight,
+        opacity: 0.9,
+        dashArray,
+      });
+
+      poly.bindPopup(`
+        <div style="font-size:12px; font-family:sans-serif; min-width:180px; padding:4px;">
+          <strong style="color:#0f172a; display:block; margin-bottom:4px;">${seg.name}</strong>
+          <div style="color:#475569; font-size:11px; line-height:1.4;">
+            <div>📏 Distance: <strong>${seg.distanceMeters}m</strong></div>
+            <div>🧱 Surface: <strong>${seg.surfaceType}</strong></div>
+            <div>📐 Incline: <strong>${seg.inclinePercent}%</strong></div>
+            <div>🪜 Steps: <strong>${seg.hasStairs ? `⚠️ ${seg.stepCount || ''} steps` : '✓ Step-free'}</strong></div>
+            <div>♿ Curb Ramps: <strong>${seg.curbRamps}</strong></div>
+            <div style="margin-top:4px; font-size:10px; color:#0d9488; font-weight:bold;">
+              Verification: ${seg.verificationLevel.toUpperCase()}
+            </div>
+          </div>
+        </div>
+      `);
+
+      this.routeLayer?.addLayer(poly);
+    });
+
+    // Render Start and Destination Pins
+    if (this.activeRoute.polyline.length > 0) {
+      const startCoord = this.activeRoute.polyline[0];
+      const destCoord = this.activeRoute.polyline[this.activeRoute.polyline.length - 1];
+
+      const startIcon = L.divIcon({
+        className: 'route-start-pin',
+        html: `
+          <div style="
+            background:#059669; color:#ffffff; font-weight:bold; font-size:11px;
+            padding:3px 8px; border-radius:12px; border:2px solid #ffffff;
+            box-shadow:0 3px 8px rgba(0,0,0,0.3); white-space:nowrap;
+          ">🚩 Start</div>
+        `,
+        iconAnchor: [24, 16],
+      });
+
+      const destIcon = L.divIcon({
+        className: 'route-dest-pin',
+        html: `
+          <div style="
+            background:#0f766e; color:#ffffff; font-weight:bold; font-size:11px;
+            padding:3px 8px; border-radius:12px; border:2px solid #ffffff;
+            box-shadow:0 3px 8px rgba(0,0,0,0.3); white-space:nowrap;
+          ">🏁 Destination</div>
+        `,
+        iconAnchor: [36, 16],
+      });
+
+      this.routeLayer.addLayer(L.marker(startCoord, { icon: startIcon, zIndexOffset: 800 }));
+      this.routeLayer.addLayer(L.marker(destCoord, { icon: destIcon, zIndexOffset: 800 }));
+
+      // Fit map view to complete route
+      const bounds = L.latLngBounds(this.activeRoute.polyline);
+      this.map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+    }
   }
 
   private highlightPlace(place: Place): void {
