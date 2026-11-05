@@ -102,8 +102,13 @@ function createUserRecord(data: {
 export const findUserByEmail = async (email: string): Promise<UserRecord | IUserDocument | null> => {
   // If DB is connected or User.findOne was stubbed in tests:
   if (isDatabaseConnected() || User.findOne !== defaultUserFindOne) {
-    const query: any = User.findOne({ email });
-    return query && typeof query.select === 'function' ? query.select('+passwordHash') : query;
+    try {
+      const query: any = User.findOne({ email });
+      const result = query && typeof query.select === 'function' ? await query.select('+passwordHash') : await query;
+      return result || null;
+    } catch (err: any) {
+      console.warn('[UserStore] Database findOne query failed or timed out. Falling back to in-memory store:', err?.message || err);
+    }
   }
 
   // Fallback to in-memory development store
@@ -115,7 +120,12 @@ export const findUserByEmail = async (email: string): Promise<UserRecord | IUser
 
 export const findUserById = async (id: string): Promise<UserRecord | IUserDocument | null> => {
   if (isDatabaseConnected() || User.findById !== defaultUserFindById) {
-    return User.findById(id);
+    try {
+      const result = await User.findById(id);
+      return result || null;
+    } catch (err: any) {
+      console.warn('[UserStore] Database findById query failed or timed out. Falling back to in-memory store:', err?.message || err);
+    }
   }
 
   await ensureSeeded();
@@ -130,7 +140,11 @@ export const createUser = async (data: {
   role: UserRole;
 }): Promise<UserRecord | IUserDocument> => {
   if (isDatabaseConnected() || User.create !== defaultUserCreate) {
-    return User.create(data);
+    try {
+      return await User.create(data);
+    } catch (err: any) {
+      console.warn('[UserStore] Database create failed or timed out. Falling back to in-memory store:', err?.message || err);
+    }
   }
 
   await ensureSeeded();

@@ -1,0 +1,20 @@
+{
+  "batchId": "batch-test-2",
+  "timestamp": "2026-11-05T18:22:38.941Z",
+  "sourceName": "Sample Test Duplicate Check",
+  "dryRun": false,
+  "totalElements": 1,
+  "importedCount": 0,
+  "updatedCount": 1,
+  "preservedCommunityCount": 0,
+  "skippedCount": 0,
+  "errorCount": 0,
+  "errors": [],
+  "executionTimeMs": 0,
+  "categoriesBreakdown": {
+    "healthcare": 1
+  },
+  "citiesBreakdown": {
+    "Colombo": 1
+  }
+}

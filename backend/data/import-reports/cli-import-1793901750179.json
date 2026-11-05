@@ -1,0 +1,37 @@
+{
+  "batchId": "cli-import-1793901750179",
+  "timestamp": "2026-11-05T18:02:30.180Z",
+  "sourceName": "Sri Lanka Verified Sample Extract (Hospitals, Transit, Education, Civic, Parks, Restrooms)",
+  "dryRun": true,
+  "totalElements": 28,
+  "importedCount": 28,
+  "updatedCount": 0,
+  "preservedCommunityCount": 0,
+  "skippedCount": 0,
+  "errorCount": 0,
+  "errors": [],
+  "executionTimeMs": 3,
+  "categoriesBreakdown": {
+    "healthcare": 12,
+    "transport": 5,
+    "education": 2,
+    "government": 2,
+    "parks": 2,
+    "culture": 3,
+    "restroom": 2
+  },
+  "citiesBreakdown": {
+    "Colombo": 8,
+    "Kandy": 5,
+    "Galle": 4,
+    "Matara": 1,
+    "Jaffna": 3,
+    "Negombo": 1,
+    "Kurunegala": 1,
+    "Anuradhapura": 1,
+    "Trincomalee": 1,
+    "Batticaloa": 1,
+    "Ratnapura": 1,
+    "Badulla": 1
+  }
+}

@@ -5,6 +5,7 @@ import { Place, PlaceFilterCriteria } from '../models/place.model';
 import { MOCK_PLACES } from '../data/mock-places';
 import { DeviceStorageService } from './device-storage.service';
 import { DeviceNetworkService } from './device-network.service';
+import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root',
@@ -14,8 +15,10 @@ export class PlaceService {
   private readonly storageService = inject(DeviceStorageService);
   private readonly networkService = inject(DeviceNetworkService);
 
-  // Master places signal initialized with realistic demo data
-  private readonly placesState = signal<Place[]>(MOCK_PLACES);
+  // In production, fictional demo data is disabled (empty array until real reports arrive).
+  // In dev/test, clearly labeled demo data is used.
+  private readonly initialPlaces = environment.enableDevDemoData ? MOCK_PLACES : [];
+  private readonly placesState = signal<Place[]>(this.initialPlaces);
 
   // Loading and error states for responsive feedback
   readonly isLoading = signal<boolean>(false);
@@ -30,7 +33,7 @@ export class PlaceService {
     const cached = await this.storageService.getCachedPlaces();
     if (cached && cached.length > 0) {
       this.placesState.set(cached);
-    } else {
+    } else if (environment.enableDevDemoData) {
       await this.storageService.cachePlaces(MOCK_PLACES);
     }
   }
@@ -60,7 +63,7 @@ export class PlaceService {
         const query = searchQuery.toLowerCase().trim();
         const matchesName = place.name.toLowerCase().includes(query);
         const matchesCategory = place.categoryLabel.toLowerCase().includes(query);
-        const matchesAddress = `${place.address.street} ${place.address.city} ${place.address.landmark || ''}`.toLowerCase().includes(query);
+        const matchesAddress = `${place.address.street} ${place.address.city} ${place.address.state || ''} ${place.address.postalCode || ''} ${place.address.landmark || ''}`.toLowerCase().includes(query);
         const matchesDesc = place.shortDescription.toLowerCase().includes(query);
         if (!matchesName && !matchesCategory && !matchesAddress && !matchesDesc) {
           return false;

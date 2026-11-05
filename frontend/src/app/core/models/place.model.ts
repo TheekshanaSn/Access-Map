@@ -6,7 +6,9 @@ export type PlaceCategory =
   | 'shopping'
   | 'culture'
   | 'restroom'
-  | 'education';
+  | 'education'
+  | 'government'
+  | 'other';
 
 export type VerifiedStatus =
   | 'community_verified'
@@ -95,6 +97,12 @@ export interface Place {
   isDuplicate?: boolean;
   duplicateOf?: string;
   isDemoData: boolean;
+  osmId?: string;
+  osmType?: 'node' | 'way' | 'relation';
+  dataSource?: 'osm' | 'community' | 'official' | 'manual';
+  sourceAttribution?: string;
+  lastImportDate?: string;
+  accessibilityAuditStatus?: 'unverified_osm' | 'community_reported' | 'staff_verified';
 }
 
 export interface PlaceFilterCriteria {

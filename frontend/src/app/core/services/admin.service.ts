@@ -158,4 +158,14 @@ export class AdminService {
   updatePlace(id: string, updates: any): Observable<any> {
     return this.http.put(`/api/places/${id}`, updates);
   }
+
+  importOsmData(options: { sample?: boolean; dryRun?: boolean } = {}): Observable<{ message: string; summary: any }> {
+    return this.http.post<{ message: string; summary: any }>('/api/admin/osm-import', options);
+  }
+
+  getOsmImportHistory(): Observable<{ reports: any[] }> {
+    return this.http.get<{ reports: any[] }>('/api/admin/osm-import/history').pipe(
+      catchError(() => of({ reports: [] }))
+    );
+  }
 }

@@ -236,25 +236,40 @@ export const ensurePlacesSeeded = (): void => {
 ensurePlacesSeeded();
 
 function createPlaceRecord(data: any): PlaceRecord {
+  const lng = data.coordinates?.lng ?? 80.7718;
+  const lat = data.coordinates?.lat ?? 7.8731;
+
   const record: PlaceRecord = {
     id: data.id || `place-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
     name: data.name,
     category: data.category,
     categoryLabel: data.categoryLabel || data.category,
     address: data.address,
-    coordinates: data.coordinates,
-    overallRating: data.overallRating || 4.0,
-    reviewCount: data.reviewCount || 1,
+    coordinates: data.coordinates || { lat, lng },
+    location: data.location || {
+      type: 'Point',
+      coordinates: [lng, lat],
+    },
+    osmId: data.osmId || undefined,
+    osmType: data.osmType || undefined,
+    osmTags: data.osmTags || {},
+    dataSource: data.dataSource || 'community',
+    sourceAttribution: data.sourceAttribution || '© OpenStreetMap contributors, ODbL 1.0',
+    importBatchId: data.importBatchId || undefined,
+    lastImportDate: data.lastImportDate || undefined,
+    accessibilityAuditStatus: data.accessibilityAuditStatus || (data.verifiedStatus === 'pending_verification' ? 'unverified_osm' : 'community_reported'),
+    overallRating: data.overallRating !== undefined ? data.overallRating : 4.0,
+    reviewCount: data.reviewCount !== undefined ? data.reviewCount : 1,
     verifiedStatus: data.verifiedStatus || 'pending_verification',
     lastAuditDate: data.lastAuditDate || new Date().toISOString().split('T')[0],
     amenities: data.amenities || {
-      stepFreeEntrance: true,
-      ramp: { available: true, slope: 'gentle', hasHandrails: true },
+      stepFreeEntrance: false,
+      ramp: { available: false, slope: 'none', hasHandrails: false },
       doorWidthCm: 90,
-      automatedDoor: true,
-      elevator: { available: true, workingStatus: 'operational', auditoryPrompts: false, brailleButtons: false },
-      accessibleRestroom: { available: true, grabBars: true, rollInSink: true, emergencyCord: false, groundFloorOrElevator: true },
-      disabledParking: { available: true, bayCount: 2, distanceToEntranceMeters: 30 },
+      automatedDoor: false,
+      elevator: { available: false, workingStatus: 'none', auditoryPrompts: false, brailleButtons: false },
+      accessibleRestroom: { available: false, grabBars: false, rollInSink: false, emergencyCord: false, groundFloorOrElevator: false },
+      disabledParking: { available: false, bayCount: 0, distanceToEntranceMeters: 0 },
       brailleSignage: false,
       hearingLoop: false,
       quietHoursAvailable: false,
@@ -280,6 +295,15 @@ function createPlaceRecord(data: any): PlaceRecord {
         categoryLabel: this.categoryLabel,
         address: this.address,
         coordinates: this.coordinates,
+        location: this.location,
+        osmId: this.osmId,
+        osmType: this.osmType,
+        osmTags: this.osmTags,
+        dataSource: this.dataSource,
+        sourceAttribution: this.sourceAttribution,
+        importBatchId: this.importBatchId,
+        lastImportDate: this.lastImportDate,
+        accessibilityAuditStatus: this.accessibilityAuditStatus,
         overallRating: this.overallRating,
         reviewCount: this.reviewCount,
         verifiedStatus: this.verifiedStatus,
@@ -327,6 +351,21 @@ export const findPlaceById = async (id: string): Promise<PlaceRecord | IPlaceDoc
 
   ensurePlacesSeeded();
   const found = inMemoryPlaces.find((p) => p.id === id);
+  return found || null;
+};
+
+export const findPlaceByOsmId = async (osmId: string): Promise<PlaceRecord | IPlaceDocument | null> => {
+  if (isDatabaseConnected()) {
+    try {
+      const doc = await PlaceModel.findOne({ osmId });
+      if (doc) return doc;
+    } catch (err) {
+      console.warn('[PlaceStore] findPlaceByOsmId error:', err);
+    }
+  }
+
+  ensurePlacesSeeded();
+  const found = inMemoryPlaces.find((p) => p.osmId === osmId);
   return found || null;
 };
 

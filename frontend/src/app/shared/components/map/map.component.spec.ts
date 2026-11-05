@@ -21,9 +21,9 @@ describe('MapComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should have default center coordinates and zoom', () => {
-    expect(component.center).toEqual([40.718, -74.004]);
-    expect(component.zoom).toBe(13);
+  it('should have default center coordinates and zoom for Sri Lanka', () => {
+    expect(component.center).toEqual([7.8731, 80.7718]);
+    expect(component.zoom).toBe(7);
   });
 
   it('should emit placeSelect when a place is selected', () => {
